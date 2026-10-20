@@ -66,10 +66,10 @@ app.post('/api/upload-db', (req, res) => {
       db = null;
     }
 
-    // Grava os bytes diretamente no ficheiro SQLite na pasta montada no volume
+    // Grava os bytes diretamente no ficheiro SQLite na pasta de dados
     fs.writeFileSync(DB_PATH, req.body);
 
-    res.json({ success: true, message: 'Base de dados atualizada com sucesso no Fly.io!' });
+    res.json({ success: true, message: 'Base de dados atualizada com sucesso no Render!' });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -136,5 +136,5 @@ app.get('/api/produtos', (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Servidor Fly.io rodando na porta ${PORT}`);
+  console.log(`Servidor Render rodando na porta ${PORT}`);
 });
