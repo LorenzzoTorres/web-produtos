@@ -1,0 +1,371 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0f172a">
+  <title>Consulta de Produtos - Rizzo</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
+  <style>
+    :root { 
+      --bg: #f8fafc; --card: #ffffff; --text: #0f172a; --muted: #64748b; 
+      --line: #e2e8f0; --primary: #2563eb; --primary-hover: #1d4ed8;
+      --danger: #ef4444; --success: #10b981; --radius: 14px;
+    }
+    * { box-sizing: border-box; }
+    body { 
+      margin: 0; background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%); 
+      color: var(--text); font: 15px/1.4 system-ui, -apple-system, sans-serif; min-height: 100vh;
+    }
+    main { width: min(680px, 100%); margin: 0 auto; padding: 12px 12px 32px; }
+    
+    header { 
+      text-align: center; margin-bottom: 12px; background: var(--card);
+      padding: 12px 14px; border-radius: var(--radius);
+      box-shadow: 0 2px 10px -2px rgba(0, 0, 0, 0.04);
+      border: 1px solid rgba(226, 232, 240, 0.8);
+      display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    }
+    .logo-container { display: flex; align-items: center; gap: 10px; }
+    .logo { max-width: 90px; height: auto; mix-blend-mode: multiply; }
+    .header-info { text-align: left; }
+    h1 { margin: 0; font-size: 1.1rem; font-weight: 700; color: #1e293b; }
+    .muted { color: var(--muted); font-size: 0.8rem; margin: 2px 0 0; }
+    .server-time { font-size: 0.75rem; color: #2563eb; font-weight: 600; margin: 2px 0 0; }
+
+    .card { 
+      background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); 
+      padding: 16px; margin: 12px 0; box-shadow: 0 6px 16px -4px rgba(0, 0, 0, 0.04); 
+    }
+    label { display: block; font-weight: 600; font-size: 0.88rem; margin: 0 0 6px; color: #334155; }
+    input[type="search"] { 
+      width: 100%; border: 2px solid var(--line); border-radius: 10px; padding: 12px 14px; 
+      font: inherit; background: #f8fafc; color: var(--text); outline: none; transition: all 0.2s;
+    }
+    input[type="search"]:focus { border-color: var(--primary); background: #ffffff; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); }
+    button { 
+      border: 0; border-radius: 10px; padding: 12px 16px; font: inherit; font-weight: 600; 
+      cursor: pointer; background: var(--primary); color: white; transition: all 0.2s; box-shadow: 0 3px 10px rgba(37, 99, 235, 0.2);
+    }
+    button:hover { background: var(--primary-hover); transform: translateY(-1px); }
+    button.secondary { background: #f1f5f9; color: #334155; box-shadow: none; border: 1px solid var(--line); }
+    button.secondary:hover { background: #e2e8f0; }
+    button.danger { background: var(--danger); box-shadow: 0 3px 10px rgba(239, 68, 68, 0.2); }
+    .controls { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+    .controls button { flex: 1 1 130px; }
+    #area-scanner { display: none; }
+    #area-scanner.active { display: block; }
+    #reader { width: 100%; overflow: hidden; border-radius: 10px; margin-top: 10px; background: #000; position: relative; min-height: 240px; }
+    #reader video { width: 100% !important; height: auto !important; display: block; }
+    #reader canvas.drawing, #reader canvas.drawingBuffer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+    .status { margin-top: 12px; padding: 10px 14px; border-radius: 10px; background: #eff6ff; color: #1e40af; font-size: 0.85rem; border: 1px solid #bfdbfe; display: none; }
+    .status.error { background: #fef2f2; color: #b91c1c; border-color: #fecaca; }
+    .status.visible { display: block; }
+    .produto-card { 
+      border: 1px solid var(--line); border-radius: 12px; padding: 16px; background: #ffffff; 
+      margin-bottom: 12px; box-shadow: 0 3px 12px -3px rgba(0, 0, 0, 0.05); position: relative; overflow: hidden;
+    }
+    .produto-card::before { content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: var(--primary); }
+    .produto-cod { font-family: monospace; color: var(--muted); font-size: 0.8rem; margin-bottom: 4px; }
+    .produto-desc { font-size: 1.1rem; font-weight: 700; color: #1e293b; line-height: 1.35; margin-bottom: 10px; }
+    .produto-preco { font-size: 2.1rem; font-weight: 800; color: var(--success); margin: 8px 0 12px; }
+    .badge { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 16px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; }
+    .badge.ativo { background: #dcfce7; color: #15803d; }
+    .badge.inativo { background: #fee2e2; color: #b91c1c; }
+
+    /* Estilos do Modal de Termo de Compromisso */
+    #modal-termo {
+      position: fixed; inset: 0; background: rgba(15, 23, 42, 0.8); z-index: 9999;
+      display: flex; align-items: center; justify-content: center; padding: 16px;
+      backdrop-filter: blur(4px);
+    }
+    #modal-termo.hidden { display: none; }
+    .modal-content {
+      background: #ffffff; width: min(480px, 100%); border-radius: 16px; padding: 24px;
+      text-align: center; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+      animation: scaleUp 0.3s ease;
+    }
+    .modal-logo { max-width: 110px; height: auto; margin-bottom: 14px; mix-blend-mode: multiply; }
+    .modal-content h2 { font-size: 1.2rem; color: #1e293b; margin: 0 0 10px; }
+    .modal-content p { font-size: 0.88rem; color: #475569; line-height: 1.5; text-align: left; margin-bottom: 20px; }
+    @keyframes scaleUp { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+  </style>
+</head>
+<body>
+
+  <!-- Modal de Termo de Compromisso -->
+  <div id="modal-termo">
+    <div class="modal-content">
+      <img src="logo.png" alt="Logo Rizzo" class="modal-logo">
+      <h2>Termo de Uso Interno</h2>
+      <p>
+        Estou ciente de que esta ferramenta é de <strong>uso exclusivo para colaboradores da Rizzo</strong>. 
+        O acesso, extração ou partilha de dados com terceiros ou concorrentes é estritamente proibido e constitui violação das políticas internas da empresa, estando sujeito a medidas disciplinares e legais cabíveis.
+      </p>
+      <button id="aceitarTermoBtn" type="button" style="width: 100%;">Estou ciente e concordo</button>
+    </div>
+  </div>
+
+<main>
+  <header>
+    <div class="logo-container">
+      <img src="logo.png" alt="Logo Rizzo" class="logo">
+    </div>
+    <div class="header-info">
+      <h1>Consulta de Produtos</h1>
+      <p class="muted">Pesquise por código ou câmara</p>
+      <p id="version" class="server-time">Sistema pronto</p>
+    </div>
+  </header>
+
+  <section class="card">
+    <label for="codigo">Código de barras ou descrição</label>
+    <input id="codigo" type="search" inputmode="search" autocomplete="off" placeholder="Digite ou escaneie o produto...">
+    <div class="controls">
+      <button id="buscarBtn" type="button">Buscar produto</button>
+      <button id="abrirBtn" class="secondary" type="button">📷 Abrir leitor</button>
+    </div>
+    <div id="status" class="status"></div>
+  </section>
+
+  <section id="area-scanner" class="card">
+    <strong>Leitor de Código de Barras</strong>
+    <p class="muted" style="margin-top: 2px;">Aponte para o código para efetuar a leitura.</p>
+    <div id="reader"></div>
+    <div class="controls" style="margin-top: 12px;">
+      <button id="fecharBtn" class="danger" type="button">Fechar câmara</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2 style="font-size: 1rem; margin: 0 0 10px; color: #334155; font-weight: 600;">Resultados da Consulta</h2>
+    <div id="resultados" class="muted">Nenhuma consulta realizada até o momento.</div>
+  </section>
+</main>
+
+<script>
+  const API_VERSAO = '/api/versao';
+  const API_PRODUTOS = '/api/produtos?q=';
+  const $ = (id) => document.getElementById(id);
+
+  window.addEventListener('DOMContentLoaded', () => {
+    const termoAceite = localStorage.getItem('rizzo_termo_aceite');
+    if (termoAceite === 'true') {
+      $('modal-termo').classList.add('hidden');
+    }
+  });
+
+  $('aceitarTermoBtn').addEventListener('click', () => {
+    localStorage.setItem('rizzo_termo_aceite', 'true');
+    $('modal-termo').classList.add('hidden');
+  });
+
+  function status(mensagem, erro = false) {
+    const el = $('status');
+    if (!mensagem) {
+      el.className = 'status';
+      el.textContent = '';
+      return;
+    }
+    el.textContent = mensagem;
+    el.className = erro ? 'status error visible' : 'status visible';
+  }
+
+  document.addEventListener('click', () => {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      if (ctx.state === 'suspended') { ctx.resume(); }
+    } catch(e) {}
+  }, { once: true });
+
+  function tocarBeep() {
+    try {
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') { audioCtx.resume(); }
+      
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(950, audioCtx.currentTime); 
+      
+      gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.12);
+      
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.12);
+    } catch (e) {}
+  }
+
+  async function carregarVersao() {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 4000);
+
+      const r = await fetch(API_VERSAO, { signal: controller.signal });
+      clearTimeout(timeoutId);
+
+      const json = await r.json();
+      if (json.success) {
+        let dataFormatada = 'Atualizado';
+        if (json.ultimaAtualizacao) {
+          const dataObj = new Date(json.ultimaAtualizacao);
+          dataFormatada = dataObj.toLocaleString('pt-BR');
+        }
+        $('version').textContent = `Base: ${dataFormatada}`;
+      } else {
+        $('version').textContent = 'Base: Online';
+      }
+    } catch (e) {
+      $('version').textContent = 'Base: Pronta';
+    }
+  }
+
+  function renderizarProdutos(dados) {
+    const container = $('resultados');
+    container.innerHTML = ''; 
+
+    let itens = [];
+    if (dados && dados.data && Array.isArray(dados.data)) {
+      itens = dados.data;
+    } else if (Array.isArray(dados)) {
+      itens = dados;
+    }
+
+    if (!itens || itens.length === 0) {
+      container.textContent = 'Nenhum produto encontrado com este termo.';
+      return;
+    }
+
+    itens.forEach(prod => {
+      const preco = (prod.rPreco_Venda1 || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+      const codigoBarras = prod.sCodBarras || 'Sem código';
+      const descricao = prod.sDescricao || 'Produto sem descrição';
+      
+      const badgeClass = prod.bAtivo === 1 ? 'badge ativo' : 'badge inativo';
+      const badgeText = prod.bAtivo === 1 ? 'Ativo' : 'Inativo';
+
+      container.innerHTML += `
+        <div class="produto-card">
+          <div class="produto-cod">Cód: ${codigoBarras}</div>
+          <div class="produto-desc">${descricao}</div>
+          <div class="produto-preco">${preco}</div>
+          <div><span class="${badgeClass}">${badgeText}</span></div>
+        </div>
+      `;
+    });
+  }
+
+  async function buscarProdutos() {
+    const q = $('codigo').value.trim();
+    if (!q) {
+      status('Digite um código ou descrição para pesquisar.', true);
+      return;
+    }
+
+    $('buscarBtn').disabled = true;
+    status('A procurar...');
+    $('resultados').textContent = 'A carregar...';
+
+    try {
+      const url = API_PRODUTOS + encodeURIComponent(q);
+      const r = await fetch(url);
+      const dados = await r.json();
+      renderizarProdutos(dados);
+      status('Consulta concluída com sucesso.');
+    } catch (e) {
+      $('resultados').textContent = 'Falha ao procurar os produtos.';
+      status('Erro na consulta ao servidor.', true);
+    } finally {
+      $('buscarBtn').disabled = false;
+    }
+  }
+
+  let leitorAtivo = false;
+  let ultimoCodigoLido = '';
+  let tempoUltimoScan = 0;
+
+  function iniciarScanner() {
+    const areaScanner = $('area-scanner');
+    areaScanner.classList.add('active');
+    status('Câmara ativa. Aponte para o código de barras.');
+
+    if (typeof Quagga === 'undefined') {
+      status('A biblioteca do leitor falhou a carregar.', true);
+      return;
+    }
+
+    Quagga.init({
+      inputStream : {
+        name : "Live",
+        type : "LiveStream",
+        target: document.querySelector('#reader'),
+        constraints: {
+          facingMode: "environment",
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        },
+      },
+      decoder : {
+        readers: [
+          "ean_reader",
+          "ean_8_reader",
+          "code_128_reader",
+          "upc_reader"
+        ]
+      },
+      locate: true
+    }, function(err) {
+        if (err) {
+            status("Erro ao aceder à câmara. Verifique as permissões no navegador.", true);
+            pararScanner();
+            return;
+        }
+        Quagga.start();
+        leitorAtivo = true;
+    });
+
+    // Lê apenas uma vez, toca o bipe, fecha a câmara e faz a busca automaticamente
+    Quagga.onDetected(function(result) {
+      if (result && result.codeResult && result.codeResult.code) {
+        const codigoLido = result.codeResult.code.trim();
+        
+        if (codigoLido.length < 12 || codigoLido.length > 14) return;
+
+        const agora = Date.now();
+        if (codigoLido === ultimoCodigoLido && (agora - tempoUltimoScan) < 3000) {
+          return;
+        }
+
+        tocarBeep();
+        ultimoCodigoLido = codigoLido;
+        tempoUltimoScan = agora;
+
+        $('codigo').value = codigoLido;
+        pararScanner();
+        buscarProdutos();
+      }
+    });
+  }
+
+  function pararScanner() {
+    $('area-scanner').classList.remove('active');
+    if (leitorAtivo) {
+      try { Quagga.stop(); } catch(e) {}
+      leitorAtivo = false;
+    }
+    status('');
+  }
+
+  $('buscarBtn').addEventListener('click', buscarProdutos);$('abrirBtn').addEventListener('click', iniciarScanner);
+  $('fecharBtn').addEventListener('click', pararScanner);$('codigo').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); buscarProdutos(); }
+  });
+
+  carregarVersao();
+</script>
+</body>
+</html>

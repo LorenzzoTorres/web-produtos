@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: web-produtos-rizzo
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: DB_PATH
+        value: ./data/pdv_cad.s3db
