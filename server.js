@@ -4,7 +4,7 @@ const path = require('path');
 const fs = require('fs');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3003;
 
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
@@ -36,6 +36,12 @@ function obterConexao() {
     db.exec(`
       CREATE INDEX IF NOT EXISTS idx_prod_barras ON produtos(sCodBarras);
       CREATE INDEX IF NOT EXISTS idx_prod_interno ON produtos(sCodInterno);
+      
+      -- Tabela para controlar os acessos diários
+      CREATE TABLE IF NOT EXISTS controle_acessos (
+        data TEXT PRIMARY KEY,
+        acessos INTEGER DEFAULT 0
+      );
     `);
   } catch (err) {
     db = null;
@@ -97,6 +103,27 @@ app.get('/api/versao', (req, res) => {
     });
   } catch (err) {
     db = null;
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// NOVO: Rota para registrar e consultar acessos do dia
+app.get('/api/acessos', (req, res) => {
+  try {
+    const database = obterConexao();
+    const hoje = new Date().toISOString().split('T')[0]; // Formato YYYY-MM-DD
+
+    // Incrementa ou insere o acesso do dia de hoje
+    database.prepare(`
+      INSERT INTO controle_acessos (data, acessos) VALUES (?, 1)
+      ON CONFLICT(data) DO UPDATE SET acessos = acessos + 1
+    `).run(hoje);
+
+    // Retorna o total de acessos de hoje
+    const resultado = database.prepare('SELECT acessos FROM controle_acessos WHERE data = ?').get(hoje);
+
+    res.json({ success: true, acessos: resultado ? resultado.acessos : 1 });
+  } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
