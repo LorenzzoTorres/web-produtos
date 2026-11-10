@@ -32,6 +32,7 @@
     h1 { margin: 0; font-size: 1.1rem; font-weight: 700; color: #1e293b; }
     .muted { color: var(--muted); font-size: 0.8rem; margin: 2px 0 0; }
     .server-time { font-size: 0.75rem; color: #2563eb; font-weight: 600; margin: 2px 0 0; }
+    .access-count { font-size: 0.75rem; color: #059669; font-weight: 600; margin: 2px 0 0; }
 
     .card { 
       background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); 
@@ -115,6 +116,7 @@
       <h1>Consulta de Produtos</h1>
       <p class="muted">Pesquise por código ou câmara</p>
       <p id="version" class="server-time">Sistema pronto</p>
+      <p id="acessos-hoje" class="access-count">Acessos hoje: ...</p>
     </div>
   </header>
 
@@ -146,6 +148,7 @@
 <script>
   const API_VERSAO = '/api/versao';
   const API_PRODUTOS = '/api/produtos?q=';
+  const API_ACESSOS = '/api/acessos';
   const $ = (id) => document.getElementById(id);
 
   window.addEventListener('DOMContentLoaded', () => {
@@ -221,6 +224,18 @@
       }
     } catch (e) {
       $('version').textContent = 'Base: Pronta';
+    }
+  }
+
+  async function registrarEcarregarAcessos() {
+    try {
+      const r = await fetch(API_ACESSOS);
+      const json = await r.json();
+      if (json.success) {
+        $('acessos-hoje').textContent = `Acessos hoje: ${json.acessos}`;
+      }
+    } catch (e) {
+      $('acessos-hoje').textContent = '';
     }
   }
 
@@ -328,7 +343,6 @@
         leitorAtivo = true;
     });
 
-    // Lê apenas uma vez, toca o bipe, fecha a câmara e faz a busca automaticamente
     Quagga.onDetected(function(result) {
       if (result && result.codeResult && result.codeResult.code) {
         const codigoLido = result.codeResult.code.trim();
@@ -360,12 +374,15 @@
     status('');
   }
 
-  $('buscarBtn').addEventListener('click', buscarProdutos);$('abrirBtn').addEventListener('click', iniciarScanner);
-  $('fecharBtn').addEventListener('click', pararScanner);$('codigo').addEventListener('keydown', (e) => {
+  $('buscarBtn').addEventListener('click', buscarProdutos);
+  $('abrirBtn').addEventListener('click', iniciarScanner);
+  $('fecharBtn').addEventListener('click', pararScanner);
+  $('codigo').addEventListener('keydown', (e) => {
     if (e.key === 'Enter') { e.preventDefault(); buscarProdutos(); }
   });
 
   carregarVersao();
+  registrarEcarregarAcessos();
 </script>
 </body>
 </html>
